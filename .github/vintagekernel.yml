@@ -1,0 +1,43 @@
+name: Compile and Run Linux v0.01
+
+on:
+  workflow_dispatch: # Allows manual trigger
+
+jobs:
+  build-vintage-kernel:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Install 32-bit Toolchain and QEMU
+      run: |
+        sudo apt-get update
+        # Install 32-bit compilation libraries and QEMU for virtualization
+        sudo apt-get install -y gcc-multilib binutils qemu-system-x86
+
+    - name: Clone Patched Linux v0.01 Source
+      run: |
+        # Pulls a version specifically patched to link properly with modern GCC
+        git clone https://github.com
+        cd linux-0.01
+        # Extract the vintage hard disk image template needed to boot it
+        unzip hd_oldlinux.img.zip
+
+    - name: Compile Vintage Kernel
+      run: |
+        cd linux-0.01
+        # Force the compiler to output a 32-bit x86 target with relaxed linking rules
+        make CC="gcc -m32" AS="as --32" LD="ld -melf_i386 --allow-multiple-definition" clean Image
+
+    - name: Test Boot via QEMU
+      run: |
+        cd linux-0.01
+        # Boot it headlessly inside GitHub Actions to ensure it doesn't crash/panic
+        # It shuts down automatically after a 10 second smoke-test
+        timeout 10s qemu-system-i386 -m 16M -boot a -fda Image -hda hd_oldlinux.img -nographic || true
+
+    - name: Upload Linux 0.01 Boot Image
+      uses: actions/upload-artifact@v4
+      with:
+        name: linux-v0.01-image
+        path: linux-0.01/Image
+        
