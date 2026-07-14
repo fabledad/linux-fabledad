@@ -1,0 +1,45 @@
+name: Compile Linux Kernel
+
+on:
+  workflow_dispatch: # Allows you to manually trigger the build from the Actions tab
+
+jobs:
+  build-kernel:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/ghc
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git fakeroot build-essential ncurses-dev \
+            xz-utils libssl-dev bc flex libelf-dev bison
+
+      - name: Clone Linux Kernel source
+        run: |
+          git clone --depth 1 https://github.com/fabledad/linux-fabledad.git
+          cd linux
+
+      - name: Configure and build Kernel
+        run: |
+          cd linux
+          # Generate default configuration
+          make defconfig
+          
+          # Fix common Ubuntu signing error keys
+          scripts/config --disable SYSTEM_REVOCATION_KEYS
+          scripts/config --disable SYSTEM_TRUSTED_KEYS
+          
+          # Compile the compressed kernel image using all available CPU cores
+          make -j$(nproc) bzImage
+
+      - name: Upload Kernel Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: compiled-bzImage
+          path: linux/arch/x86/boot/bzImage
