@@ -1424,7 +1424,7 @@ static void __init do_initcalls(void)
 		strcpy(command_line, saved_command_line);
 		do_initcall_level(level, command_line);
 	}
-
+	kfree(command_line);
 	kfree(command_line);
 }
 
